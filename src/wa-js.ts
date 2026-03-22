@@ -1,4 +1,4 @@
-import WPP from "@wppconnect/wa-js";
+import type WPP from "@wppconnect/wa-js";
 import { ChromeMessageTypes } from "types/ChromeMessageTypes";
 import type { Message } from "types/Message";
 import AsyncChromeMessageManager from "utils/AsyncChromeMessageManager";
@@ -17,7 +17,7 @@ const sendWPPMessage = async ({
   contact,
   message,
   attachment,
-  buttons = [],
+  buttons,
 }: Message) => {
   if (attachment?.url && buttons.length > 0) {
     const response = await fetch(attachment.url);
@@ -163,7 +163,7 @@ WebpageMessageManager.addHandler(ChromeMessageTypes.PAUSE_QUEUE, () => {
   try {
     asyncQueue.pause();
     return true;
-  } catch (error) {
+  } catch {
     return false;
   }
 });
@@ -172,7 +172,7 @@ WebpageMessageManager.addHandler(ChromeMessageTypes.RESUME_QUEUE, () => {
   try {
     asyncQueue.resume();
     return true;
-  } catch (error) {
+  } catch {
     return false;
   }
 });
@@ -181,7 +181,7 @@ WebpageMessageManager.addHandler(ChromeMessageTypes.STOP_QUEUE, () => {
   try {
     asyncQueue.stop();
     return true;
-  } catch (error) {
+  } catch {
     return false;
   }
 });
@@ -212,10 +212,3 @@ WebpageMessageManager.addHandler(ChromeMessageTypes.QUEUE_STATUS, () =>
 );
 
 void storageManager.clearDatabase();
-
-// @TODO: Remove workaround to inject the loader
-try {
-  WPP.webpack.injectLoader();
-} catch {
-  // window.location.reload();
-}

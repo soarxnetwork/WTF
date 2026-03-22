@@ -6,6 +6,8 @@ const CopyPlugin = require("copy-webpack-plugin");
 /** @type {import('webpack').Configuration} */
 module.exports = {
   context: path.resolve(__dirname, "src"),
+  mode: "production",
+  performance: { hints: false },
   devtool: false,
   entry: fs
     .readdirSync(path.resolve(__dirname, "src"))

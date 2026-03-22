@@ -17,15 +17,15 @@ export default class SelectCountryCode extends Component<
   constructor() {
     super({});
     this.defaultLabelSelectCountryCode = chrome.i18n.getMessage(
-      "defaultLabelSelectCountryCode"
+      "defaultLabelSelectCountryCode",
     );
     const defaultOptions: CountryCode[] = [
-        { value: 0, label: this.defaultLabelSelectCountryCode },
-      ];
+      { value: 0, label: this.defaultLabelSelectCountryCode },
+    ];
 
     const language = chrome.i18n.getUILanguage().substring(0, 2);
     let module = ENcountryCodes;
-    console.log('EN Country Codes:', ENcountryCodes);
+    console.log("EN Country Codes:", ENcountryCodes);
     if (language === "pt") {
       module = PTcountryCodes;
     }
@@ -56,7 +56,7 @@ export default class SelectCountryCode extends Component<
   handleSearch = (e: ChangeEvent<HTMLInputElement>) => {
     const searchValue = e.target.value.toLowerCase();
     const filteredOptions = this.state.options.filter((option) =>
-      option.label.toLowerCase().includes(searchValue)
+      option.label.toLowerCase().includes(searchValue),
     );
 
     this.setState({ searchValue, filteredOptions });
@@ -90,10 +90,10 @@ export default class SelectCountryCode extends Component<
       }) => {
         this.setState({
           selectedValue: this.state.options.find(
-            (option) => option.value === prefix
+            (option) => option.value === prefix,
           ),
         });
-      }
+      },
     );
   }
 
@@ -105,7 +105,7 @@ export default class SelectCountryCode extends Component<
       selectedValue: CountryCode | undefined;
       options: CountryCode[];
       filteredOptions: CountryCode[];
-    }>
+    }>,
   ) {
     if (prevState.selectedValue !== this.state.selectedValue) {
       void chrome.storage.local.set({

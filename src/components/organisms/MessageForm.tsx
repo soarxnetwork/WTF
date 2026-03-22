@@ -8,7 +8,12 @@ import type { Message } from "types/Message";
 
 export default class MessageForm extends Component<
   { className?: string },
-  { message: string; attachment?: Attachment | null; delay: number }
+  {
+    message: string;
+    attachment?: Attachment | null;
+    delay: number;
+    randomDelay: boolean;
+  }
 > {
   constructor(props: { className?: string }) {
     super(props);
@@ -17,6 +22,7 @@ export default class MessageForm extends Component<
       message: this.defaultMessage,
       attachment: undefined,
       delay: 0,
+      randomDelay: false,
     };
   }
 
@@ -42,11 +48,13 @@ export default class MessageForm extends Component<
         message = this.defaultMessage,
         attachment,
         delay = 0,
-      }: Omit<Message, "contact">) => {
+        randomDelay = false,
+      }: Omit<Message, "contact"> & { randomDelay?: boolean }) => {
         this.setState({
           message,
           attachment,
           delay,
+          randomDelay,
         });
         if (attachment?.url && this.fileRef.current) {
           void fetch(attachment.url)
@@ -74,14 +82,18 @@ export default class MessageForm extends Component<
       message: string;
       attachment?: Attachment;
       delay: number;
+      randomDelay: boolean;
     }>,
   ) {
-    const { message, attachment, delay } = this.state;
+    const { message, attachment, delay, randomDelay } = this.state;
 
     if (prevState.message !== message)
       void chrome.storage.local.set({ message });
 
     if (prevState.delay !== delay) void chrome.storage.local.set({ delay });
+
+    if (prevState.randomDelay !== randomDelay)
+      void chrome.storage.local.set({ randomDelay });
 
     if (prevState.attachment?.url !== attachment?.url)
       void chrome.storage.local.set({ attachment });
@@ -197,47 +209,68 @@ export default class MessageForm extends Component<
             )}
           </div>
         </div>
-        <div className="mx-4 flex items-center">
-          <label htmlFor="delay">
-            {this.delayLabelMessageForm} (
-            <span className="font-mono">{this.state.delay.toFixed(1)}s</span>):
-          </label>
-          <input
-            type="range"
-            id="delay"
-            name="delay"
-            min="0"
-            max="10"
-            step="0.1"
-            value={this.state.delay}
-            onChange={(e) => {
-              this.setState({ delay: Number(e.target.value) });
-            }}
-            className={[
-              "w-full",
-              "h-1.5",
-              "bg-slate-100",
-              "dark:bg-slate-900",
-              "border",
-              "border-slate-400",
-              "dark:border-slate-600",
-              "accent-slate-600",
-              "dark:accent-slate-400",
-              "appearance-none",
-              "outline-none",
-              "rounded-full",
-              "cursor-pointer",
-              "transition-shadow",
-              "ease-in-out",
-              "duration-150",
-              "hover:bg-blue-100",
-              "dark:hover:bg-blue-900",
-              "focus:shadow-equal",
-              "focus:shadow-blue-800",
-              "dark:focus:shadow-blue-200",
-              "focus:outline-none",
-            ].join(" ")}
-          />
+        <div className="mx-4 mb-4 flex flex-col">
+          <div className="flex items-center mb-2">
+            <input
+              type="checkbox"
+              id="randomDelay"
+              checked={this.state.randomDelay}
+              onChange={(e) => {
+                this.setState({ randomDelay: e.target.checked });
+              }}
+              className="mr-2 cursor-pointer w-4 h-4 accent-slate-600 dark:accent-slate-400"
+            />
+            <label htmlFor="randomDelay" className="cursor-pointer select-none">
+              Random Delay (6s - 15s)
+            </label>
+          </div>
+          {!this.state.randomDelay && (
+            <div className="flex items-center w-full">
+              <label htmlFor="delay" className="whitespace-nowrap mr-2">
+                {this.delayLabelMessageForm} (
+                <span className="font-mono">
+                  {this.state.delay.toFixed(1)}s
+                </span>
+                ):
+              </label>
+              <input
+                type="range"
+                id="delay"
+                name="delay"
+                min="0"
+                max="10"
+                step="0.1"
+                value={this.state.delay}
+                onChange={(e) => {
+                  this.setState({ delay: Number(e.target.value) });
+                }}
+                className={[
+                  "w-full",
+                  "h-1.5",
+                  "bg-slate-100",
+                  "dark:bg-slate-900",
+                  "border",
+                  "border-slate-400",
+                  "dark:border-slate-600",
+                  "accent-slate-600",
+                  "dark:accent-slate-400",
+                  "appearance-none",
+                  "outline-none",
+                  "rounded-full",
+                  "cursor-pointer",
+                  "transition-shadow",
+                  "ease-in-out",
+                  "duration-150",
+                  "hover:bg-blue-100",
+                  "dark:hover:bg-blue-900",
+                  "focus:shadow-equal",
+                  "focus:shadow-blue-800",
+                  "dark:focus:shadow-blue-200",
+                  "focus:outline-none",
+                ].join(" ")}
+              />
+            </div>
+          )}
         </div>
         <div className="mb-4 mx-4 flex flex-col">
           <label className="mb-2">{this.countryCodePrefixMessageForm}</label>

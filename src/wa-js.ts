@@ -209,5 +209,5 @@ void storageManager.clearDatabase();
 try {
   WPP.webpack.injectLoader();
 } catch {
-  window.location.reload();
+  // window.location.reload();
 }

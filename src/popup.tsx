@@ -130,9 +130,14 @@ class Popup extends Component<
         attachment,
         buttons = [],
         delay = 0,
+        randomDelay = false,
         prefix = language === "pt_BR" ? 55 : 0,
-      }: Omit<Message, "contact"> & { prefix: number }) => {
+      }: Omit<Message, "contact"> & {
+        prefix: number;
+        randomDelay?: boolean;
+      }) => {
         for (const contact of this.parseContacts(prefix)) {
+          const finalDelay = randomDelay ? Math.random() * (15 - 6) + 6 : delay;
           void PopupMessageManager.sendMessage(
             ChromeMessageTypes.SEND_MESSAGE,
             {
@@ -140,7 +145,7 @@ class Popup extends Component<
               message,
               attachment,
               buttons,
-              delay,
+              delay: finalDelay,
             },
           );
         }

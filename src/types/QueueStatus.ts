@@ -6,6 +6,7 @@ export default interface QueueStatus {
   elapsedTime: number;
   processing: number | false;
   waiting: number | false;
+  waitTarget?: number | false;
   items: {
     detail: unknown;
     elapsedTime: number;

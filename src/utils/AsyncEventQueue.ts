@@ -16,6 +16,7 @@ class AsyncEventQueue {
     [];
   private processing: number | false = false;
   private waiting: number | false = false;
+  private waitTarget: number | false = false;
   private aborted = false;
   private paused = false;
   private pausePromiseResolve?: ((value?: unknown) => void) | undefined;
@@ -68,6 +69,7 @@ class AsyncEventQueue {
           this.waiting = Date.now();
           const waitStart = Date.now();
           const waitTarget = item.detail.delay * 1000;
+          this.waitTarget = waitTarget;
           while (Date.now() - waitStart < waitTarget) {
             await this.wait(100);
             if (this.paused) {
@@ -84,6 +86,7 @@ class AsyncEventQueue {
             }
           }
           this.waiting = false;
+          this.waitTarget = false;
         }
       }
 
@@ -124,6 +127,7 @@ class AsyncEventQueue {
           : Date.now() - this.processing,
       waiting:
         this.waiting === false ? this.waiting : Date.now() - this.waiting,
+      waitTarget: this.waitTarget,
       processedItems: this.processedItems,
       remainingItems: this.aborted ? this.remainingItems : this.queue.length,
       totalItems: this.processedItems + this.queue.length,

@@ -219,7 +219,12 @@ class Popup extends Component<
               )}
               {this.state.status?.waiting && <div>{this.waitingPopup}</div>}
               {this.state.status?.waiting && (
-                <div>{this.formatTime(this.state.status.waiting)}</div>
+                <div>
+                  {this.formatTime(this.state.status.waiting)}
+                  {this.state.status.waitTarget && typeof this.state.status.waitTarget === "number"
+                    ? ` / ${this.formatTime(this.state.status.waitTarget)}`
+                    : ""}
+                </div>
               )}
               <div>{this.messagesSentPopup}</div>
               <div>{this.state.status?.processedItems}</div>

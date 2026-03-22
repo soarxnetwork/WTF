@@ -28,4 +28,8 @@ export default interface ChromeMessageContentTypes {
     payload: undefined;
     response: boolean;
   };
+  [ChromeMessageTypes.SET_BATCH_SETTINGS]: {
+    payload: { batchSize: number; batchSleep: number };
+    response: boolean;
+  };
 }

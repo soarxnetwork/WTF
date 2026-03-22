@@ -52,8 +52,6 @@ class Popup extends Component<
   override componentDidMount() {
     const body = document.querySelector("body");
     if (!body) return;
-    body.classList.add("bg-gray-100");
-    body.classList.add("dark:bg-gray-900");
 
     this.updateStatus();
     this.queueStatusListener = window.setInterval(this.updateStatus, 100);
@@ -87,39 +85,45 @@ class Popup extends Component<
 
   handleChange = (event: ChangeEvent<HTMLTextAreaElement>) => {
     this.setState({
-      contacts: event.target.value.replace(/[^\d\n\t,;]*/g, ""),
+      contacts: event.target.value,
     });
   };
 
   parseContacts = (prefix: number) => {
     const prefixToString = (prefix === 0 ? "" : prefix).toString();
     const contactList = this.state.contacts
-      .split(/[\n\t,;]/)
+      .split(/[\n\t;]/)
       .filter((str) => str.trim() !== "");
-    const pristinedContactsWithPrefix = contactList.map((s) =>
-      prefixToString.concat(s.trim().replace(/[\D]*/g, "")),
-    );
 
     this.setState({ duplicatedContacts: 0 });
 
-    return pristinedContactsWithPrefix.filter(
-      (contact: string, index: number) => {
-        const result = pristinedContactsWithPrefix.indexOf(contact) === index;
-        if (!result) {
-          this.setState((prevState) => ({
-            duplicatedContacts: prevState.duplicatedContacts + 1,
-          }));
-          void PopupMessageManager.sendMessage(ChromeMessageTypes.ADD_LOG, {
-            level: 2,
-            message: this.duplicatedNumberPopup,
-            attachment: false,
-            contact,
-          });
-        }
+    const parsedList: { contact: string; name: string }[] = [];
+    const uniqueContacts = new Set<string>();
 
-        return result;
-      },
-    );
+    contactList.forEach((line) => {
+      const parts = line.split(",");
+      const rawNumber = (parts[0] ?? "").replace(/[\D]*/g, "");
+      if (!rawNumber) return;
+      const contactNo = prefixToString.concat(rawNumber);
+      const name = parts.length > 1 ? parts.slice(1).join(",").trim() : "";
+
+      if (uniqueContacts.has(contactNo)) {
+        this.setState((prevState) => ({
+          duplicatedContacts: prevState.duplicatedContacts + 1,
+        }));
+        void PopupMessageManager.sendMessage(ChromeMessageTypes.ADD_LOG, {
+          level: 2,
+          message: this.duplicatedNumberPopup,
+          attachment: false,
+          contact: contactNo,
+        });
+      } else {
+        uniqueContacts.add(contactNo);
+        parsedList.push({ contact: contactNo, name });
+      }
+    });
+
+    return parsedList;
   };
 
   handleSubmit = (event: FormEvent<HTMLFormElement>) => {
@@ -131,24 +135,39 @@ class Popup extends Component<
         buttons = [],
         delay = 0,
         randomDelay = false,
+        batchSize = 0,
+        batchSleep = 0,
         prefix = language === "pt_BR" ? 55 : 0,
       }: Omit<Message, "contact"> & {
         prefix: number;
         randomDelay?: boolean;
+        batchSize?: number;
+        batchSleep?: number;
       }) => {
-        for (const contact of this.parseContacts(prefix)) {
-          const finalDelay = randomDelay ? Math.random() * (15 - 6) + 6 : delay;
-          void PopupMessageManager.sendMessage(
-            ChromeMessageTypes.SEND_MESSAGE,
-            {
-              contact,
-              message,
-              attachment,
-              buttons,
-              delay: finalDelay,
-            },
-          );
-        }
+        void PopupMessageManager.sendMessage(
+          ChromeMessageTypes.SET_BATCH_SETTINGS,
+          { batchSize, batchSleep },
+        ).then(() => {
+          for (const item of this.parseContacts(prefix)) {
+            const finalDelay = randomDelay
+              ? Math.random() * (15 - 6) + 6
+              : delay;
+            const personalizedMessage = message.replace(
+              /\{\{Name\}\}/gi,
+              item.name || "",
+            );
+            void PopupMessageManager.sendMessage(
+              ChromeMessageTypes.SEND_MESSAGE,
+              {
+                contact: item.contact,
+                message: personalizedMessage,
+                attachment,
+                buttons,
+                delay: finalDelay,
+              },
+            );
+          }
+        });
       },
     );
     event.preventDefault();
@@ -188,17 +207,44 @@ class Popup extends Component<
             }
             footer={
               this.state.status?.isProcessing ? (
-                <Button
-                  variant="danger"
-                  onClick={() =>
-                    void PopupMessageManager.sendMessage(
-                      ChromeMessageTypes.STOP_QUEUE,
-                      undefined,
-                    )
-                  }
-                >
-                  {this.cancelButtonLabel}
-                </Button>
+                <div className="flex gap-2 w-full justify-between items-center">
+                  <Button
+                    variant="danger"
+                    onClick={() =>
+                      void PopupMessageManager.sendMessage(
+                        ChromeMessageTypes.STOP_QUEUE,
+                        undefined,
+                      )
+                    }
+                  >
+                    {this.cancelButtonLabel}
+                  </Button>
+                  {this.state.status.isPaused ? (
+                    <Button
+                      variant="success"
+                      onClick={() =>
+                        void PopupMessageManager.sendMessage(
+                          ChromeMessageTypes.RESUME_QUEUE,
+                          undefined,
+                        )
+                      }
+                    >
+                      Resume
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="warning"
+                      onClick={() =>
+                        void PopupMessageManager.sendMessage(
+                          ChromeMessageTypes.PAUSE_QUEUE,
+                          undefined,
+                        )
+                      }
+                    >
+                      Pause
+                    </Button>
+                  )}
+                </div>
               ) : (
                 <Button
                   variant="primary"
@@ -221,7 +267,8 @@ class Popup extends Component<
               {this.state.status?.waiting && (
                 <div>
                   {this.formatTime(this.state.status.waiting)}
-                  {this.state.status.waitTarget && typeof this.state.status.waitTarget === "number"
+                  {this.state.status.waitTarget &&
+                  typeof this.state.status.waitTarget === "number"
                     ? ` / ${this.formatTime(this.state.status.waitTarget)}`
                     : ""}
                 </div>
@@ -237,15 +284,16 @@ class Popup extends Component<
               <div>{this.duplicatedContactsPopup}</div>
               <div>{this.state.duplicatedContacts}</div>
               {this.state.status && (
-                <div className="w-full h-4 bg-gray-300 dark:bg-gray-600 rounded relative col-span-2 self-end">
+                <div className="w-full h-5 bg-gray-300 dark:bg-gray-600 rounded-full relative col-span-2 self-end overflow-hidden shadow-inner border border-white/20">
                   <div
-                    className={`h-4 rounded progress-bar${this.state.status.isProcessing ? " progress-bar-animated" : ""}`}
+                    className={`h-5 rounded-full progress-bar${this.state.status.isProcessing && !this.state.status.isPaused ? " progress-bar-animated" : ""}`}
                     style={{
                       width: `${((this.state.status.processedItems / (this.state.status.processedItems + this.state.status.remainingItems)) * 100).toString()}%`,
+                      transition: "width 0.5s ease-in-out",
                     }}
                   ></div>
                   <div className="absolute inset-0 flex items-center justify-center">
-                    <span className="text-xs font-semibold">
+                    <span className="text-xs font-bold text-white drop-shadow-md">
                       {Math.round(
                         (this.state.status.processedItems /
                           (this.state.status.processedItems +
@@ -268,10 +316,10 @@ class Popup extends Component<
               footer={this.prefixFooterNotePopup}
             >
               <ControlTextArea
-                className="flex-auto"
+                className="flex-auto bg-white/50 dark:bg-black/50 backdrop-blur-sm placeholder:text-slate-400"
                 value={this.state.contacts}
                 onChange={this.handleChange}
-                placeholder={this.messagePlaceholderPopup}
+                placeholder={`${this.messagePlaceholderPopup} (e.g. 919876543210, John)`}
                 required
               />
               <div className="flex justify-between items-center">

@@ -16,9 +16,10 @@ export default class Button extends Component<ButtonProps, unknown> {
   override render() {
     const { variant, children, ...buttonProps } = this.props;
     const classNames = [
-      "px-4",
-      "py-2",
-      "rounded-md",
+      "px-5",
+      "py-2.5",
+      "font-medium",
+      "rounded-xl",
       "transition",
       "ease-in-out",
       "duration-150",

@@ -13,6 +13,8 @@ export default class MessageForm extends Component<
     attachment?: Attachment | null;
     delay: number;
     randomDelay: boolean;
+    batchSize: number;
+    batchSleep: number;
   }
 > {
   constructor(props: { className?: string }) {
@@ -23,6 +25,8 @@ export default class MessageForm extends Component<
       attachment: undefined,
       delay: 0,
       randomDelay: false,
+      batchSize: 0,
+      batchSleep: 0,
     };
   }
 
@@ -49,12 +53,20 @@ export default class MessageForm extends Component<
         attachment,
         delay = 0,
         randomDelay = false,
-      }: Omit<Message, "contact"> & { randomDelay?: boolean }) => {
+        batchSize = 0,
+        batchSleep = 0,
+      }: Omit<Message, "contact"> & {
+        randomDelay?: boolean;
+        batchSize?: number;
+        batchSleep?: number;
+      }) => {
         this.setState({
           message,
           attachment,
           delay,
           randomDelay,
+          batchSize,
+          batchSleep,
         });
         if (attachment?.url && this.fileRef.current) {
           void fetch(attachment.url)
@@ -80,12 +92,15 @@ export default class MessageForm extends Component<
     _prevProps: Readonly<{ className?: string }>,
     prevState: Readonly<{
       message: string;
-      attachment?: Attachment;
+      attachment?: Attachment | null;
       delay: number;
       randomDelay: boolean;
+      batchSize: number;
+      batchSleep: number;
     }>,
   ) {
-    const { message, attachment, delay, randomDelay } = this.state;
+    const { message, attachment, delay, randomDelay, batchSize, batchSleep } =
+      this.state;
 
     if (prevState.message !== message)
       void chrome.storage.local.set({ message });
@@ -94,6 +109,12 @@ export default class MessageForm extends Component<
 
     if (prevState.randomDelay !== randomDelay)
       void chrome.storage.local.set({ randomDelay });
+
+    if (prevState.batchSize !== batchSize)
+      void chrome.storage.local.set({ batchSize });
+
+    if (prevState.batchSleep !== batchSleep)
+      void chrome.storage.local.set({ batchSleep });
 
     if (prevState.attachment?.url !== attachment?.url)
       void chrome.storage.local.set({ attachment });
@@ -181,13 +202,31 @@ export default class MessageForm extends Component<
           >
             <label
               htmlFor="attachment"
-              className="mb-2 text-center cursor-pointer"
+              className="mb-2 w-full text-center flex flex-col items-center justify-center min-h-[8rem] cursor-pointer"
             >
               {attachment?.name ? (
-                attachment.name
+                attachment.type.startsWith("image/") ? (
+                  <div className="flex flex-col items-center gap-2">
+                    <img
+                      src={attachment.url}
+                      alt="preview"
+                      className="max-h-32 object-contain rounded-lg shadow-md"
+                    />
+                    <span className="text-xs text-slate-500 overflow-hidden text-ellipsis whitespace-nowrap max-w-[12rem]">
+                      {attachment.name}
+                    </span>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center gap-2">
+                    <p className="text-4xl">📎</p>
+                    <span className="text-sm font-medium">
+                      {attachment.name}
+                    </span>
+                  </div>
+                )
               ) : (
                 <>
-                  <p className="mb-2 text-2xl">🖼</p>
+                  <p className="mb-2 text-3xl">🖼</p>
                   <p className="text-sm text-slate-800 dark:text-slate-200">
                     {this.attachmentLabelMessageForm}
                   </p>
@@ -272,6 +311,44 @@ export default class MessageForm extends Component<
             </div>
           )}
         </div>
+
+        <div className="mx-4 mb-4 flex flex-col p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-white/5">
+          <p className="font-semibold text-sm mb-3">Anti-Ban Batching</p>
+          <div className="flex gap-4">
+            <div className="flex flex-col flex-1">
+              <label className="text-xs text-slate-500 dark:text-slate-400 mb-1">
+                Pause after X msgs
+              </label>
+              <input
+                type="number"
+                min="0"
+                value={this.state.batchSize}
+                onChange={(e) => {
+                  this.setState({ batchSize: Number(e.target.value) });
+                }}
+                className="w-full text-sm p-2 bg-white dark:bg-black rounded-lg border border-slate-300 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div className="flex flex-col flex-1">
+              <label className="text-xs text-slate-500 dark:text-slate-400 mb-1">
+                Sleep for (seconds)
+              </label>
+              <input
+                type="number"
+                min="0"
+                value={this.state.batchSleep}
+                onChange={(e) => {
+                  this.setState({ batchSleep: Number(e.target.value) });
+                }}
+                className="w-full text-sm p-2 bg-white dark:bg-black rounded-lg border border-slate-300 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+          </div>
+          <p className="text-[10px] text-slate-400 mt-2">
+            Set both to 0 to disable automated batch sleeping.
+          </p>
+        </div>
+
         <div className="mb-4 mx-4 flex flex-col">
           <label className="mb-2">{this.countryCodePrefixMessageForm}</label>
           <SelectCountryCode />

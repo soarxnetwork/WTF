@@ -33,6 +33,26 @@ export default class LogTable extends Component<
     this.setState({ logs: [] });
   };
 
+  handleCopyFailed = () => {
+    const failedNumbers = this.state.logs
+      .filter((log) => log.level === 1 || log.level === 2)
+      .map((log) => log.contact)
+      .join("\n");
+
+    if (failedNumbers) {
+      navigator.clipboard
+        .writeText(failedNumbers)
+        .then(() => {
+          alert("Failed numbers copied to clipboard!");
+        })
+        .catch(() => {
+          alert("Failed to copy. Check permissions.");
+        });
+    } else {
+      alert("No failed numbers found.");
+    }
+  };
+
   handleUpdate = () => {
     chrome.storage.local.get(({ logs = [] }: { logs: Log[] }) => {
       this.setState({ logs });
@@ -52,6 +72,9 @@ export default class LogTable extends Component<
         title={this.logTableTitle}
         headerButtons={
           <div className="flex justify-end gap-4">
+            <Button variant="warning" onClick={this.handleCopyFailed}>
+              Copy Failed
+            </Button>
             <Button variant="primary" onClick={this.handleUpdate}>
               {this.updateButtonLabel}
             </Button>
@@ -79,7 +102,7 @@ export default class LogTable extends Component<
             </tr>
           </thead>
           <tbody>
-            {this.state.logs.map((log, index) => (
+            {[...this.state.logs].reverse().map((log, index) => (
               <tr key={index} className={logLevelClass[log.level]}>
                 <td className="border px-4 py-2">{log.contact}</td>
                 <td className="border px-4 py-2">{log.message}</td>

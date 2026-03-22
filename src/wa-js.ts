@@ -187,6 +187,14 @@ WebpageMessageManager.addHandler(ChromeMessageTypes.STOP_QUEUE, () => {
 });
 
 WebpageMessageManager.addHandler(
+  ChromeMessageTypes.SET_BATCH_SETTINGS,
+  (settings: { batchSize: number; batchSleep: number }) => {
+    asyncQueue.setBatchSettings(settings.batchSize, settings.batchSleep);
+    return true;
+  },
+);
+
+WebpageMessageManager.addHandler(
   ChromeMessageTypes.SEND_MESSAGE,
   async (message) =>
     window.WPP.isReady

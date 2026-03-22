@@ -9,8 +9,6 @@ class Options extends Component<unknown, unknown> {
   override componentDidMount() {
     const body = document.querySelector("body");
     if (!body) return;
-    body.classList.add("bg-gray-100");
-    body.classList.add("dark:bg-gray-900");
     body.style.minWidth = "48rem";
   }
 

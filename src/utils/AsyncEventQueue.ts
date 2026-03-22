@@ -17,12 +17,19 @@ class AsyncEventQueue {
   private processing: number | false = false;
   private waiting: number | false = false;
   private waitTarget: number | false = false;
+  private batchSize = 0;
+  private batchSleep = 0;
   private aborted = false;
   private paused = false;
   private pausePromiseResolve?: ((value?: unknown) => void) | undefined;
 
   private async wait(ms: number) {
     return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  public setBatchSettings(batchSize: number, batchSleep: number) {
+    this.batchSize = batchSize;
+    this.batchSleep = batchSleep;
   }
 
   public async add<T extends { delay?: number }>({
@@ -65,7 +72,34 @@ class AsyncEventQueue {
         const elapsedTime = Date.now() - startTime;
         this.items.push({ detail: item.detail, startTime, elapsedTime });
 
-        if (item.detail.delay && this.queue.length !== 0) {
+        if (
+          this.batchSize > 0 &&
+          this.batchSleep > 0 &&
+          this.processedItems % this.batchSize === 0 &&
+          this.queue.length !== 0
+        ) {
+          this.waiting = Date.now();
+          const batchWaitStart = Date.now();
+          const batchWaitTarget = this.batchSleep * 1000;
+          this.waitTarget = batchWaitTarget;
+          while (Date.now() - batchWaitStart < batchWaitTarget) {
+            await this.wait(100);
+            if (this.paused) {
+              await new Promise(
+                (resolve) => (this.pausePromiseResolve = resolve),
+              );
+            }
+
+            // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+            if (this.aborted) {
+              this.remainingItems = this.queue.length;
+              this.queue = [];
+              break;
+            }
+          }
+          this.waiting = false;
+          this.waitTarget = false;
+        } else if (item.detail.delay && this.queue.length !== 0) {
           this.waiting = Date.now();
           const waitStart = Date.now();
           const waitTarget = item.detail.delay * 1000;
@@ -120,6 +154,7 @@ class AsyncEventQueue {
         ? Date.now() - this.startTime
         : this.endTime - this.startTime,
       isProcessing: this.isProcessing,
+      isPaused: this.paused,
       items: this.items,
       processing:
         this.processing === false
